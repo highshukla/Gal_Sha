@@ -1,4 +1,6 @@
-This repo has following files:
+This repo has following files checks various claims in the manuscript "ON THE FACTORIZATION OF TWISTED L-VALUES AND 11-DESCENTS OVER C5-NUMBER FIELDS" of Celine Maistret and I. 
+
+Following are the files in this repo:
 - curves_K11.m
 - curves_K31.m
 - check_vis.m
