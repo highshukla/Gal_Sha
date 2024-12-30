@@ -1,6 +1,7 @@
-This repo has following files checks various claims in the manuscript "ON THE FACTORIZATION OF TWISTED L-VALUES AND 11-DESCENTS OVER C5-NUMBER FIELDS" of Celine Maistret and I. 
+This repo has following files and checks various claims in the manuscript "ON THE
+FACTORIZATION OF TWISTED L-VALUES AND 11-DESCENTS OVER C5-NUMBER FIELDS" of Celine
+Maistret and I:
 
-Following are the files in this repo:
 - curves_K11.m
 - curves_K31.m
 - check_vis.m
@@ -31,3 +32,6 @@ The files above have the following descriptions:
                        and compute action of Galois on Sel_11(E/K) and output the 
                        polynomials h_theta. 
 
+
+PS: We are developing this file further to optimize the run time of the main() in
+compute_Selmer_11.m
