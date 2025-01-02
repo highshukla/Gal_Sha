@@ -16,7 +16,7 @@ eigenspacepolys :=
 ideals := [];
 prec := 15; //starting precision for L-value computations
 C := ComplexField(prec);
-K := Subfields(CyclotomicField(11),5)[1][1]; // K= Q(zeta_11)^+
+cyc := CyclotomicField(11); K := sub<cyc| cyc.1+ cyc.1^(-1)>; // K= Q(zeta_11)^+
 ar := ArtinRepresentations(K);
 cyc5 :=CyclotomicField(5); k := sub<cyc5| cyc5.1 + 1/cyc5.1>;
 o5 := MaximalOrder(cyc5);
@@ -95,7 +95,7 @@ end for;
 
 
 print ""; print "";
-print "Now computing for 207025ca4: ";
+print "Now computing for 207025ca4 as in Remark 3.18: ";
   cur := EllipticCurve("207025ca4"); curK := BaseChange(cur, K);
   print "Elliptic curve: ", cur;
   La := LSeries(cur, a: Precision := prec);
