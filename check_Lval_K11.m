@@ -6,8 +6,10 @@
 
 load "helper_funcs.m";
 Qx<x>:= PolynomialRing(Rationals());
-
-data_vals_11 := ["5776g2", "6400r2", "7056bq4","16641e2", "57600r2","90601a2", "215296b2", "461041h4", "499849d4"];
+load "curves_K11.m";
+data_vals_11:= [d[3]: d in data]; Remove(~data_vals_11, 7);
+data_vals_11_lmfdb:= [d[2]: d in data]; Remove(~data_vals_11_lmfdb, 7);
+//data_vals_11 := ["5776g2", "6400r2", "7056bq4","16641e2", "57600r2","90601a2", "215296b2", "461041h4", "499849d4"];
 
 
 eigenspacepolys :=
@@ -42,7 +44,7 @@ print "";
 for j in [1..#data_vals_11] do
   data := data_vals_11[j]; 
   cur := EllipticCurve(data); curK := BaseChange(cur, K);
-  printf "Elliptic curve with Cremona lable %o given by aInvariants %o\n", data,
+  printf "Elliptic curve with Cremona lable %o and LMFDB lable %o given by aInvariants %o\n", data, data_vals_11_lmfdb[j],
   aInvariants(cur);
   La := LSeries(cur, a: Precision := prec);
   rp := RealPeriod(cur); //Real period of curve
@@ -95,7 +97,7 @@ end for;
 
 
 print ""; print "";
-print "Now computing for 207025ca4 as in Remark 3.18: ";
+print "Now computing for curve with Cremona label 207025ca4 and LMFDB label 207025.by1 as in Remark 3.18: ";
   cur := EllipticCurve("207025ca4"); curK := BaseChange(cur, K);
   print "Elliptic curve: ", cur;
   La := LSeries(cur, a: Precision := prec);
