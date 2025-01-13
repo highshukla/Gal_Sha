@@ -1,23 +1,28 @@
-
-//The following program uses the main function to compute the Sel_11(E/K)/Sel_11(E/Q) for
-//a number field K in which 11 is unramified as an ideal. There is a precision
-//parameter prec for precision in local computation. The input to the main function is
-//the Cremona ref or aInvariants or the defining polynomial in the simplified
-//Weierstrass model of the curve, the cm discriminant, and a cyclic number field K of
-//degree 5. A call will look like main("7056bq4", -28, K).  The output of the main
-//function is a sequence of linear polynomials x-a_theta corresponding to the
-//eigenspace theta of Sel_11(E/K)/Sel_11(E/Q). For example after calling 
-//main("7056bq4",-28, K) with K as the degree 5 subfield of 11th cyclotomic field, the
-//function returns [x-3, x-4].
-
+/*
+The following program uses the main function to compute the Sel_11(E/K)/Sel_11(E/Q) for
+a number field K in which 11 is unramified as an ideal. There is a precision
+parameter prec for precision in local computation that is 50 as default. 
+The main() automatically increases the precision if and when required. 
+The input to the main function is
+the Cremona ref or aInvariants or the defining polynomial, and a cyclic number 
+field K of degree 5. A call will look like main("7056bq4", K).  The output of the main
+function are
+  1) a sequence of linear polynomials x-a_theta corresponding to the eigenspaces
+     theta of Sel_11(E/K)/Sel_11(E/Q),
+  2) a list of sequences indexed by i in [1..4] of elements in F_i that correspond 
+     to u^gamma= u^phi(gamma) mod 11 powers,
+  3) a list of sequences indexed by i in [1..4] of elements in F_i that correspond 
+     to 11-selmer elements in F_i,
+  4) a user-function that takes input an element u in F_i and i and checks if u corresponds to an 11-Selmer element or not, and 
+  5) phi(gamma).
+The automorphism sigma that generates Gal(L/F) is chosen to be gamma^2.   
+*/
 
 QQ := Rationals(); ZZ := Integers(); Qx<x> := PolynomialRing(QQ); 
-load "helpers_refined.m";
+load "helper_funcs.m";
 SetClassGroupBounds("GRH");
 //data_vals contains Cremona-labels of curves mentioned in the manuscript.
 data_vals_11 := ["5776g2", "6400r2", "7056bq4","16641e2", "57600r2","90601a2" ,"207025ca4", "215296b2", "461041h4", "499849d4"];
-//cms[i] is the CM-Discriminant of the curve data_vals[i].
-cms_11 := [-19,-8,-28,-43,-8,-43,-28,-8,-28,-28];
 data_vals31:= [
     [ 0, 0, 0, -262395, 51731946 ],
     [ 0, 0, 0, -1049580, 413855568 ],
@@ -30,16 +35,18 @@ data_vals31:= [
     [ 1, -1, 1, -18588135, 30849251024 ],
     [ 0, 0, 0, -26239500, 51731946000 ]
 ];
-cms_31:= [ -28, -28, -43, -28, -28, -28, -28, -28, -28, -28 ];
 
 
-
-main := function(data, cm, K: prec := 50)
+main := function(data, K: prec := 50)
 
 cur := WeierstrassModel(EllipticCurve(data));
 
 printf "curve is given by the Cremona label %o and the field K is given by the defining polynomial %o \n", CremonaReference(cur), DefiningPolynomial(K) ;
 
+bool, cm := HasComplexMultiplication(cur); 
+if not bool then error "This curve does not have complex multiplication"; end if;
+
+print "Curve has CM discriminant: ", cm;
 //Base change cur to K.
 curK := BaseChange(cur,K);
 PK:= PolynomialRing(K);
@@ -64,12 +71,10 @@ delete l1t;
 l := AbsoluteField(l); 
 l := ext<QQ|MinimalPolynomial(11*l.1)>;
 F := Subfields(l, 4)[1][1]; 
-print "F computed";
 cmfld := Subfields(F, 2)[1][1];
 ordcm := MaximalOrder(cmfld); bascm := Basis(ordcm); 
 OF := MaximalOrder(Order(bascm cat Basis(EquationOrder(F))));
 F := OptimizedRepresentation(F: Discriminant := Discriminant(OF));
-print "optimized F computed";
 OF := MaximalOrder(F: Discriminant:= Discriminant(OF)); 
 basOF := Basis(OF); 
 ordl := EquationOrder(l); ord := Order(Basis(ordl) cat basOF); 
@@ -100,17 +105,21 @@ Pl := Parent(fctnsglob[1][1]);
 fctnsglob := [*[P.1*ltolk(Coefficient(t, Pl.1, 1)) +
   P.2*ltolk(Coefficient(t,Pl.2,1))  +  ltolk(ConstantTerm(t)): t in fctn]:
   fctn in fctnsglob*]; 
-//  print "Size of degree 4 subfields of l:", #Subfields(l,4);
 
 
 //computing sigma and tau such that <sigma>=Gal(L/F) and <tau>=Gal(K/Q).  
-G1, p1, m1 := AutomorphismGroup(l, F);
+cmfld := Subfields(l,2)[1][1];
+G1, p1, m1 := AutomorphismGroup(l, cmfld);
+g:= [e: e in G1| Order(e) eq 10][1];
 lrelF := RelativeField(F,l);
 fk := ext<K|DefiningPolynomial(F)>;
 G2, p2, m2 := AutomorphismGroup(K);
-sigma := m1(G1.2); tau1 := m2(G2.1); 
+
+sigma := m1(g^2); tau1 := m2(G2.1); gamma := m1(g);
 tau := hom<fk -> fk | x :-> elt<fk|[tau1(c): c in ElementToSequence(x)]>>;
 
+print "choosing sigma = gamma^2";
+print "gamma, sigma and tau computed as in the manuscript";
 
 a := l.1+1; b := K.1;
 
@@ -121,13 +130,10 @@ assert Rank(Matrix(F, 5,5, &cat[ElementToSequence((tau1^i)(b)): i in [0..4]])) e
 
 //checking how sigma acts on an 11-torsion point P
 Ptsig := [sigma(x1),sigma(y1),1];
+Ptgam := [gamma(x1), gamma(y1),1];
 curl := BaseChange(cur, l);
-g := [i : i in [3,4,5,9]| i*curl!Pt eq curl!Ptsig][1];
-print "sigma on 11 - torsion acts as multiplication by: ", g;
-mat := Transpose(Matrix(GF(11), 5,5,[0,0,0,0,1,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0]));
-e := ElementToSequence(Basis(Eigenspace(mat,g))[1]);
-e := [ZZ!t: t in e];
-
+gam := [i: i in [1..10]| i*curl!Pt eq curl!Ptgam][1];
+printf "P^gamma = %oP and phi(gamma) = %o\n", gam, gam;
 
 
 
@@ -156,12 +162,13 @@ absflds := [*ext<QQ|p >: p in minpolsQ*];
 absfldstolk := [*hom<absflds[i] -> lk| values[i]>: i in [1..#absflds]*];
 
 
-
-//action of sigma on lk 
-siglk := hom<lk -> lk | ltolk(sigma(l.1))>;
+//action of gamma on lk 
+gamlk := hom<lk-> lk | ltolk(gamma(l.1))>;
 Finflds := [*sub<fld| Roots(DefiningPolynomial(F),fld)[1][1]>: fld in absflds*];
-autgps := [<G,m> where G, p, m := AutomorphismGroup(absflds[i], Finflds[i]): i in
+cmfldinflds := [*sub<fld| Roots(DefiningPolynomial(cmfld), fld)[1][1]>: fld in absflds*];
+autgps_gam :=[<G,m> where G, p, m := AutomorphismGroup(absflds[i], cmfldinflds[i]): i in
   [1..#absflds]];
+
 
 
 //computing class groups
@@ -174,7 +181,8 @@ basord := [*Basis(EquationOrder(fld)): fld in absflds*];
 basordF := [*[FtoFinflds[i](F!b): b in basOF] : i in [1..#absflds]*];
 someord := [*Order(basordF[i] cat basord[i]): i in [1..#absflds]*];
 maxord := [*MaximalOrder(ord): ord in someord*];
-print "maximal orders of F_i computed";
+print "maximal orders of F_is computed";
+print "maximal orders of F_is have Discriminants of bit size:", [Log(2,Discriminant(ord)): ord in maxord];
 clgps := [<G,m> where G, m := ClassGroup(ord): ord in maxord];
 
 print "class grp orders: ", [#gp[1]: gp in clgps];
@@ -182,144 +190,101 @@ print "class grp orders: ", [#gp[1]: gp in clgps];
 
 
 //local computation and local images
-p11 := Factorization(11*MaximalOrder(K))[1][1];
-K11, m11 := Completion(K,p11: Precision  := prec);
-K11 := ChangePrecision(K11, prec);
-PKv := PolynomialRing(K11);
-curK11 := BaseChange(curK,m11);
+flag := false;
+while not flag do
+  p11 := Factorization(11*MaximalOrder(K))[1][1];
+  K11, m11 := Completion(K,p11: Precision  := prec);
+  K11 := ChangePrecision(K11, prec);
+  PKv := PolynomialRing(K11);
+  curK11 := BaseChange(curK,m11);
 
-deflkv := PKv![K11!m11(c): c in Coefficients(DefiningPolynomial(lk))];
-locflds := <LocalField(K11, e[1]): e in Factorization(deflkv)>;
-localg := quo<PKv| deflkv>; 
-lktolocalg := hom<lk-> localg| t:-> elt<localg|[K11!m11(c): c in ElementToSequence(t)]>>;
-localgtolocflds := <hom<localg-> loc| loc.1>: loc in locflds>;
-print "total local fields: ", #locflds;
-locimg, homs, selgps, relevantpts := complocImg(fctnsglob, PKv![m11(c): c in Coefficients(f)], lktolocalg, localgtolocflds);
-
-
-
-
-
+  deflkv := PKv![K11!m11(c): c in Coefficients(DefiningPolynomial(lk))];
+  locflds := <LocalField(K11, e[1]): e in Factorization(deflkv)>;
+  localg := quo<PKv| deflkv>; 
+  lktolocalg := hom<lk-> localg| t:-> elt<localg|[K11!m11(c): c in ElementToSequence(t)]>>;
+  localgtolocflds := <hom<localg-> loc| loc.1>: loc in locflds>;
+  try 
+  locimg, homs, selgps, relevantpts := complocImg(fctnsglob, PKv![m11(c): c in Coefficients(f)], lktolocalg, localgtolocflds);
+  flag := true;
+  catch e 
+  prec := prec + 50; 
+  continue;
+  end try;
+end while;
 
 
 unitgps_maps := [**];
 for i in [1..#maxord] do 
-  ugp, mgp, useq := SUnitGroup(maxord[i]*1: GRH:= true, Raw := true);
+ugp, mgp, useq := SUnitGroup(maxord[i]*1: Raw := true);
   ugp := [g: g in Generators(ugp)| Order(g) eq 0];
   Append(~unitgps_maps, <ugp, mgp, useq, Rank(Codomain(mgp))>);
 end for;
  
-//unitgps := [*[absflds[i]!&*[unitgps_maps[i][3][t]^(unitgps_maps[i][2](g)[t] mod 11): t in [1..unitgps_maps[i][4]]]: g in Generators(unitgps_maps[i][1])]: i in [1..#absflds]*];
 
-print "unit groups computed";
+idx_gam := [**];
 
-ord2aut := [**];
+gamflds :=[**];
+for i in [1..#autgps_gam] do 
+  gp := autgps_gam[i]; fldtolk := absfldstolk[i]; m1 := gp[2]; 
+  g1 := [t:t in gp[1]| Order(t) eq 10][1];
+  for j in [1..9] do 
+    if fldtolk(m1((g1)^j)(Domain(fldtolk).1)) eq gamlk(values[i]) then Append(~gamflds, m1(g1^j)); break; 
+    end if;
+  end for;
+end for;
 
+
+
+
+
+eigensp_poly:= []; //eigensp_poly is a sequence of minimal polynomials with respect to
+                   //eigenspaces 
+unitgps := [**];  //unitgps[i] is a sequence of elements in F_i that satsify u^gamma=u^
+                  //phi(gamma) modulo 11 powers. 
+pselmergp := [**]; //pselmergp[i] is a sequence of elements in F_i that are 11-Selmer
+                   //elements
 for i in [1..#absflds] do
-  fld := absflds[i]; fld_10 := Subfields(fld, 10)[1][1];
-  g1, p1, m1 := AutomorphismGroup(fld, fld_10);  g1 := m1(g1.2);
-  Append(~ord2aut, g1);
-end for;
-
-
-
-
-//Searching for p-Selmer elements in U(F_i). 
-unitgps := [**];
-for i in [1..#unitgps_maps] do
-  i;
-  ugp := unitgps_maps[i];
-  for j in [1..100] do 
-    rand := Random(CartesianPower({i: i in [0..10]},9));
-    if rand eq <0: i in [1..9]> then continue; end if;
-    u := &+[rand[t]*ugp[1][t]: t in [1..9]];
-    u_val := absflds[i]!&*[ugp[3][t]^(ugp[2](u)[t] mod 11): t in [1..ugp[4]]];
-    if check_irr(maxord[i], Discriminant(maxord[i]), u_val) eq true then 
-    units := [autgps[i][2](g)(u_val): g in autgps[i][1]] cat [autgps[i][2](g)(ord2aut[i](u_val)): g in autgps[i][1]];                                         
-      ker := checkIndUnitsModPow(units, maxord[i], Discriminant(maxord[i]), 11);
-//      ker2 := checkIndUnitsModPow([u_val, ord2aut[i](u_val)], maxord[i], Discriminant(maxord[i]), 11);
-      if Dimension(ker) eq 1 then 
-        pow_vec := unitgps_maps[i][2](u);
-        pow_vec := [pow_vec[t] mod 11: t in [1..unitgps_maps[i][4]]];
-idx := Indices(pow_vec,0); idx := [i: i in [1..#pow_vec]| not i in idx];
-        Append(~unitgps, <u,idx>); break; 
-      end if;
-    end if;
-  end for;
-end for;
-
-
-
-idx := [];
-for i in [1..#autgps] do 
-  gp := autgps[i]; fldtolk := absfldstolk[i]; m1 := gp[2]; g1 := gp[1].2;
-  for j in [1..4] do 
-    if fldtolk(m1((g1)^j)(Domain(fldtolk).1)) eq siglk(values[i]) then Append(~idx, j); break; end
-    if;
-  end for;
-end for;
-
-
-sigflds := [*gp[2]((gp[1].2)^idx[i]) where gp := autgps[i]: i in [1..#idx]*];
-
-
-
-
-
-lists_G := [**];
-for i in [1..#absflds] do 
-  print i;
-  Gi := [sigflds[i]^t: t in [1..5]] cat [sigflds[i]^t*ord2aut[i]: t in [1..5]];
-  fldtolocalg := absfldstolk[i]*lktolocalg; 
- // Domain(fldtolocalg);
-  list := unitgps_maps[i][3];
-  for t in [1..Degree(list)] do
-    if not t in unitgps[i][2] then list[t]:= 1; end if;
-  end for;
-  list_Gi := toSel(Gi, list, fldtolocalg, localgtolocflds, homs, selgps);
-  Append(~lists_G, list_Gi);
-end for;  
- 
-
-locunits := [**];
-
-for i in [1..#lists_G] do
-  pow_vec := unitgps_maps[i][2](unitgps[i][1]);
-  pow_vec := [pow_vec[t] mod 11: t in [1..unitgps_maps[i][4]]];
-  lui := [**];
-  for j in [1..#lists_G[i]] do
-    uj := <&+[pow_vec[l]*lists_G[i][j][l][t]: l in [1..#pow_vec]]: t in [1..#homs]>;
-    Append(~lui, uj);
-  end for;
-  Append(~locunits, lui);
-end for;
-
-eigenvals:= [];
-for i in [1..#locunits] do 
-  lui := locunits[i]; u := <&+[e[(t mod 5)+1]*(lui[t][j]-lui[5+t][j]): t in [1..5]]: j in [1..#homs]>;
-  if <u[t] in locimg[t]: t in [1..#u]> eq <true: t in [1..#u]> 
-    then print "found an element for a_theta:", (GF(11)!g)^(-i); 
-    Append(~eigenvals, i);  
+  printf "Checking for 11-Selmer elements in F_%o\n", i;
+  unitgp :=[];
+  selgp := [];
+  primes_11 :=[p[1]: p in Factorization(11*maxord[i])| p[2] eq 1];
+  if (primes_11 eq []) or exists{p: p in primes_11|InertiaDegree(p) ne 1} then
+    S := {Parent(maxord[i]*1)|};  
+    ugp_req, mgp := pSelmerGroup(11, S: Raw:=true);
+    print "S_i for computing R(F_i, S_i; 11) has size 0";
+  else
+    ugp_req, mgp := pSelmerGroup(11, {p: p in primes_11}: Raw := true);
+    print "S_i for computing R(F_i, S_i; 11) has size", #primes_11;
   end if;
+  gens := [ugp_req.t: t in [1..Ngens(ugp_req)]];
+  ugens := [absflds[i]!gen@@mgp : gen in gens];
+  gam_ugens := [ElementToSequence((mgp(gamflds[i](gen)))): gen in ugens];
+  mat := Matrix(GF(11),#gens, #gens, &cat(gam_ugens));
+  assert Order(mat) eq 10;
+  eigsp := Eigenspace(mat, gam);
+  bas_es := [ElementToSequence(b): b in Basis(eigsp)];
+  printf "Dimension of the relavant eigenspace in R(F_%o, S_%o; 11) =%o\n", i, i, #bas_es;
+  for b in bas_es do 
+    u := (&+[(ZZ!b[t])*gens[t] : t in [1..#gens]])@@mgp;
+    Append(~unitgp, u);
+    locunit := <localgtolocflds[t](lktolocalg(absfldstolk[i](u))): t in [1..#homs]>;
+    locunit := <selgps[t][2](homs[t](locunit[t])): t in [1..#homs]>;
+      if <locunit[t] in locimg[t]: t in [1..#locimg]> eq <true: t in [1..#locimg]> then
+        printf "%o is an eigenspace poly\n", x- ZZ!((GF(11)!gam)^(-2*i));
+        Append(~eigensp_poly, x- ZZ!((GF(11)!gam)^(-2*i)));
+        Append(~selgp, u);
+      end if; 
+  end for;
+  Append(~unitgps, unitgp);
+  Append(~pselmergp, selgp);
+  print ""; print ""; print "";
 end for;
 
+check_selmer := func<u,i| forall{t: t in [1..#homs]| (absfldstolk[i]*lktolocalg*localgtolocflds[t]*homs[t]*selgps[t][2])(u) in locimg[t]}>;
 
 
-for i in [1..#clgps] do 
-  clgp := clgps[i];
-  if #clgp[1] mod 11 eq 0 then
-    print "11-torsion in class group"; 
-    gp11 := SylowSubgroup(clgp[1],11);
-    id := clgp[2](gp11.1); gens := Generators(id); sigid := ideal<maxord[i]| [sigflds[i](t): t in gens]>;
-    if sigid@@clgp[2]- g*gp11.1 eq Identity(clgp[1]) then print "found something"; read pause;
-    end if;
-  end if;
-end for;
+return eigensp_poly, unitgps, pselmergp, check_selmer, gam;
 
-
-print "final reading pause";
-
-return [x- ZZ!((GF(11)!g)^(-eigval)): eigval in eigenvals];
 end function;
 
 
