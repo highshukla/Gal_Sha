@@ -32,6 +32,6 @@ The files above have the following descriptions:
                        and compute action of Galois on Sel_11(E/K) and output the 
                        polynomials h_theta. 
 
-
-PS: We are developing this file further to optimize the run time of the main() in
-compute_Selmer_11.m
+Under the current implementation main() in compute_Selmer_11.m takes an elliptic curve with
+complex multiplication by an order O in which 11 splits and a cyclic quintic extension
+K of Q having only one prime above 11. 
