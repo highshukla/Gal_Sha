@@ -13,7 +13,8 @@ function are
      to u^gamma= u^phi(gamma) mod 11 powers,
   3) a list of sequences indexed by i in [1..4] of elements in F_i that correspond 
      to 11-selmer elements in F_i,
-  4) a user-function that takes input an element u in F_i and i and checks if u corresponds to an 11-Selmer element or not, and 
+  4) a user-function that takes input an element u in F_i and i and returns true if 
+     u corresponds to an 11-Selmer element and false otherwise, and 
   5) phi(gamma).
 The automorphism sigma that generates Gal(L/F) is chosen to be gamma^2.   
 */
