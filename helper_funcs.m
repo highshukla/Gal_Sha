@@ -169,7 +169,7 @@ locfctns := [*[&+[x*lktolocalg(Coefficient(t, P.1, 1)), y*lktolocalg(Coefficient
   relevantpts := [**];
 
   for i in [1..10000] do 
-  if #relevantpts eq 5 then print "everything found"; break; end if;
+  if #relevantpts eq 5 then print "Computed local image at primes above 11"; break; end if;
     x1 := Random(IntegerRing(k));
     if not IsSquare(Evaluate(f, x1)) then continue; else y1 := SquareRoot(Evaluate(f,x1));
     pt := [EllipticCurve(f)![m(g)(x1),m(g)(y1),1]: g in G];
@@ -183,7 +183,7 @@ locfctns := [*[&+[x*lktolocalg(Coefficient(t, P.1, 1)), y*lktolocalg(Coefficient
       if exists{i: i in [1..#valflds]| not selgps[i][2](valflds[i]) in subs[i]} then 
         subs := [*sub<selgps[i][1]| subs[i], selgps[i][2](valflds[i])>: i in [1..#selgps]*];  
         Append(~relevantpts, pp);
-        print "size of relevantpts : ", #relevantpts;
+//        print "size of relevantpts : ", #relevantpts;
       end if;
     end for;
     end if;
@@ -241,11 +241,12 @@ end function;
 //function computes the kernel of the linear 
 //map F_p^(#units)---> F^*/(F^*)^p sending e_i to units[i].
 
-checkIndUnitsModPow := function(units, extord, disc_extf, p)
+checkIndUnitsModPow := function(units, extord, p)
                  
   n := 100; checked := 0;
   data:=[**];
   ker := Kernel(Matrix(GF(p), #units, 1, [0: i in [1..#units]]));
+  disc_extf := Discriminant(extord);
   while checked lt 200 do 
     l := getnextprime(p, n);
     if disc_extf mod l eq 0 then n := l+1; continue; end if;
@@ -284,9 +285,10 @@ end function;
 
 //Given an order ord, its discriminant disc_ord and an element u in the fraction field
 //F of ord, this function checks if F = Q(u).
-check_irr := function(ord, disc_ord, u)
+check_irr := function(ord, u)
   flag := true;  
-  primes_checked := 0;  
+  primes_checked := 0; 
+  disc_ord := Discriminant(ord); 
   for p in PrimesInInterval(1,1000) do 
     if disc_ord mod p ne 0 then 
       fact_p := [t[1]: t in Factorization(p*ord)];
@@ -326,6 +328,17 @@ toSel := function(G, list, fldtolocalg, localgtolocflds, homs, selgps)
 end function;
       
 
+get_eigensp := function(ker, v)
+  bf := BaseField(ker); V := Generic(ker);
+  dim_V := Dimension(V); bas_V := Basis(V); M, m := quo<V| ker>;
+  img_bas := [m(b): b in bas_V]; 
+  dict := func<x| x+1>;
+  g := hom<V-> V| [bas_V[dict((i+1) mod dim_V)]: i in [0..dim_V-1]]>;
+  bas_M := Basis(M);
+  mat := Matrix(bf, Dimension(M), Dimension(M),[ElementToSequence(m(g(b@@m))): b in bas_M]);
+  eigsp_v := sub<V| [b@@m: b in Basis(Eigenspace(mat, v))]>; 
+  return eigsp_v, sub<V|[b@@m: b in bas_M]>;
+end function;
 
 
     
