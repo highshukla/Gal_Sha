@@ -22,9 +22,12 @@ The automorphism sigma that generates Gal(L/F) is chosen to be gamma^2.
 QQ := Rationals(); ZZ := Integers(); Qx<x> := PolynomialRing(QQ); 
 load "helper_funcs.m";
 SetClassGroupBounds("GRH");
-//data_vals contains Cremona-labels of curves mentioned in the manuscript.
-data_vals_11 := ["5776g2", "6400r2", "7056bq4","16641e2", "57600r2","90601a2" ,"207025ca4", "215296b2", "461041h4", "499849d4"];
-data_vals31:= [
+//data_11 contains Cremona-labels of curves mentioned in the manuscript.
+data_11:= ["5776g2", "6400r2", "7056bq4","16641e2", "57600r2","90601a2" ,"207025ca4", "215296b2", "461041h4", "499849d4"];
+
+//data_31 contains aInvariants of curves in LMFDB that acquire 11-torsion in Sha 
+//in degree 5 subfield of Q(zeta_31). 
+data_31:= [
     [ 0, 0, 0, -262395, 51731946 ],
     [ 0, 0, 0, -1049580, 413855568 ],
     [ 0, 0, 0, -25442240, 49394836848 ],
