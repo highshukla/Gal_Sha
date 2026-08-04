@@ -30,8 +30,9 @@ The files above have the following descriptions:
 
 - compute_Selmer_11.m: this file contains the main function to compute the Sel_11(E/K)
                        and compute action of Galois on Sel_11(E/K) and output the 
-                       polynomials h_theta. 
+                       polynomials h_theta. The parameters in the main function can be used to compute
+                       the full or only the partial 11-Selmer group depending on the use of Algorithm 2 or 3.  
 
 Under the current implementation main() in compute_Selmer_11.m takes an elliptic curve with
 complex multiplication by an order O in which 11 splits and a cyclic quintic extension
-K of Q having only one prime above 11. 
+K of Q. 
