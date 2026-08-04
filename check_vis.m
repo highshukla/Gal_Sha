@@ -1,4 +1,4 @@
-//This code verifies the claims in \S 2.2 in the manuscript.
+//This code verifies the claims in \S A.2 in the manuscript.
 load "helper_funcs.m";
 E1 := EllipticCurve("9450dj1"); 
 E2 := EllipticCurve("9450dk1");

@@ -1,5 +1,5 @@
 //This file checks for changes in the ideal factorization of special L-value of curves
-//mentioned in the table in Theorem 1.6 in the manuscript and the curve in remark 3.18
+//mentioned in the table in the Example 1.7 in the manuscript and the curve in the Remark 3.6
 //in the manuscript. We would use the Cremona labels of the curves here as Magma
 //recognizes the curves with Cremona labels. The labels are saved in the array
 //data_vals_11
@@ -97,7 +97,7 @@ end for;
 
 
 print ""; print "";
-print "Now computing for curve with Cremona label 207025ca4 and LMFDB label 207025.by1 as in Remark 3.18: ";
+print "Now computing for curve with Cremona label 207025ca4 and LMFDB label 207025.by1 as in Remark 3.6: ";
   cur := EllipticCurve("207025ca4"); curK := BaseChange(cur, K);
   print "Elliptic curve: ", cur;
   La := LSeries(cur, a: Precision := prec);
