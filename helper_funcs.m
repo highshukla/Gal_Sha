@@ -127,25 +127,25 @@ locEltEq := function(a, b)
 
   pi := UniformizingElement(P);
   OP := IntegerRing(P);
-  diff := a - b;
-  val := Valuation(diff);
+  d := a - b;
+  val := Valuation(d);
 
   // Technical detail: otherwise precision will be computed as 0.
-  if Precision(diff) in {0, 1} then
+  if Precision(d) in {0, 1} then
     prec := Min([val, Precision(P)]);
   else
-    prec := Precision(diff);
+    prec := Precision(d);
   end if;
 
   if val lt 0 then
-    diff := diff/(pi^val);
+    d := d/(pi^val);
   end if;
 
   try
     PR := quo<OP | pi^(prec - 2)>;
-    return PR!diff eq 0;
+    return PR!d eq 0;
   catch e
-    print diff, val, Precision(diff), Precision(P), prec;
+    print d, val, Precision(d), Precision(P), prec;
     error "error in locEltEq";
   end try;
 end function;
@@ -188,7 +188,7 @@ compLocFunc := function(pt1, pt2, f, x, y)
     return E!seq_sumpt, [x - x1, 1];
   else
     slope := (y2 - y1)/(x2 - x1);
-    return E!sumpt, [y - x*slope - (y1*x2 - y2*x1)/(x2 - x1), x - seq_sumpt[1]];
+    return E!seq_sumpt, [y - x*slope - (y1*x2 - y2*x1)/(x2 - x1), x - seq_sumpt[1]];
   end if;
 end function;
 
@@ -243,8 +243,7 @@ complocImg := function(fctns, f, lktolocalg, localgtolocflds)
   relevantpts := [**];
 
   for trial in [1..10000] do
-    if #relevantpts eq 5 then    //the size of relevantpts is 5 because of dimension of E(K_v)/pE(K_v), 
-				 //where v is a prime above p in K.
+  if #relevantpts eq #G then    //the size of relevantpts is #G=[k:Q_p] because of dimension of E(k)/pE(k), 
       print "Computed local image at primes above 11";
       break;
     end if;

@@ -1,7 +1,12 @@
 /*
 The following program uses the main function to compute the Sel_11(E/K)/Sel_11(E/Q) for
-a number field K in which 11 is unramified as an ideal. There is a precision
-parameter prec for precision in local computation that is 50 as default. 
+a number field K in which 11 is unramified as an ideal. There are two parameters, the
+first one is precision parameter "prec" for precision in local computation that is 50 as default,
+and the second one is parameter for computing the full Selmer group or using section 3.1 and Algorithm 3
+and computing only the eigenspace polynomials. This parameter is called "full" and is set as default to "false", i.e., 
+implements Algorithm 3 as default. Call the main function with "full = true" in order to compute the full
+Selmer group. 
+
 The main() automatically increases the precision if and when required. 
 The input to the main function is
 the Cremona ref or aInvariants or the defining polynomial, and a cyclic number 
@@ -41,8 +46,9 @@ data_31:= [
 ];
 
 
-main := function(data, K: prec := 50)
+main := function(data, K: prec := 50, full:= false)
 
+q := Degree(K);
 cur := WeierstrassModel(EllipticCurve(data));
 
 printf "curve is given by the Cremona label %o and the field K is given by the defining polynomial %o \n", CremonaReference(cur), DefiningPolynomial(K) ;
@@ -65,14 +71,16 @@ f := Evaluate(-DefiningPolynomial(cur),[x,0,1]);
 
 //constructing l (this is our etale algebra L= Q(P)). We want to compute nice defining
 //polynomial, i.e., with small coeffs, for L, therefore we compute the maximal order of
-//a not-so-good representation using the subfield F of L as in Prop. 3.8 in manuscript
-//and then compute the optimized representation for L.
+//a not-so-good representation using the subfield F of L as in Fig. 1 in manuscript
+//and then compute the optimized representation for L. Maximal orders of subfields are used
+//to compute the maximal order of the bigger fields.
 l1 := ext<QQ|relevantpol>; 
 l1t := PolynomialRing(l1);
 
 l := ext<l1|Polynomial([-Evaluate(f, l1.1),0,1])>;
 delete l1t;
 l := AbsoluteField(l); 
+
 l := ext<QQ|MinimalPolynomial(11*l.1)>;
 F := Subfields(l, 4)[1][1]; 
 cmfld := Subfields(F, 2)[1][1];
@@ -128,8 +136,8 @@ print "gamma, sigma and tau computed as in the manuscript";
 a := l.1+1; b := K.1;
 
 //creating normal basis for l and ek over k1;
-assert Rank(Matrix(F, 5,5, &cat[ElementToSequence(lrelF!((sigma^i)(a))): i in [0..4]])) eq 5;
-assert Rank(Matrix(F, 5,5, &cat[ElementToSequence((tau1^i)(b)): i in [0..4]])) eq 5;
+assert Rank(Matrix(F, q,q, &cat[ElementToSequence(lrelF!((sigma^i)(a))): i in [0..q-1]])) eq q;
+assert Rank(Matrix(F, q,q, &cat[ElementToSequence((tau1^i)(b)): i in [0..q-1]])) eq q;
 
 
 //checking how sigma acts on an 11-torsion point P
@@ -149,13 +157,24 @@ printf "P^gamma = %oP and phi(gamma) = %o\n", gam, gam;
 //conjugates to each other. The orbit of ab wrt to H gives rise to an element ab_H := 
 // \sum h(ab) for h in H. The orbit of H_1 and H_2 wrt two distinct subgroups gives 2
 // distinct orbits with intersection as {ab}. This is the step 3,4,5 in the Algorithm.
-partitions := [[<(k*t) mod 5, t> : t in [0..4]] : k in [1..4]];
-values := [[<(sigma^(v[1]))(a), (tau^(v[2]))(b)>: v in partitions[i]]: i in [1..4]];
+//
 
+if full then 
+  q_half := q; 
+else 
+  q_half := (q-1)/2; 
+end if;
+
+printf "The full parameter was %o, so computing for %o many auxilary fields F_i\n", full, q_half;
+
+partitions := [[<(k*t) mod q, t> : t in [0..q-1]] : k in [0..q_half]];
+values := [[<(sigma^(v[1]))(a), (tau^(v[2]))(b)>: v in partitions[i+1]]: i in [0..q_half]];
+// The first partition above corresponds to k=0, so is [<0,0>, (0,1),...,<0,q-1>] and the
+// first entry in the values will correspond to [<a,b>, <a,tau(b)>,...,<a,tau^(q-1)(b)>]
 
 
 //primitive elements generating a degree 20 subfield of lk
-values := [&+[ltolk(v[1])*lk!v[2]: v in values[i]]: i in [1..4]];
+values := [&+[ltolk(v[1])*lk!v[2]: v in values[i+1]]: i in [0..q_half]];
 assert forall{v : v in values | Degree(MinimalPolynomial(v,QQ)) eq 20};
 
 
@@ -166,7 +185,7 @@ absflds := [*ext<QQ|p >: p in minpolsQ*];
 absfldstolk := [*hom<absflds[i] -> lk| values[i]>: i in [1..#absflds]*];
 
 
-//action of gamma on lk 
+//action of gamma on LK 
 gamlk := hom<lk-> lk | ltolk(gamma(l.1))>;
 Finflds := [*sub<fld| Roots(DefiningPolynomial(F),fld)[1][1]>: fld in absflds*];
 cmfldinflds := [*sub<fld| Roots(DefiningPolynomial(cmfld), fld)[1][1]>: fld in absflds*];
@@ -194,27 +213,32 @@ print "class grp orders: ", [#gp[1]: gp in clgps];
 
 
 //local computation and local images
-flag := false;
-while not flag do
-  p11 := Factorization(11*MaximalOrder(K))[1][1];
-  K11, m11 := Completion(K,p11: Precision  := prec);
-  K11 := ChangePrecision(K11, prec);
-  PKv := PolynomialRing(K11);
-  curK11 := BaseChange(curK,m11);
+  primes_above_11 := [p[1]: p in Factorization(11*MaximalOrder(K))];
+  locdat := [**];
+  for p11 in primes_above_11 do
+    flag := false;
+    prec := 50;
+    while not flag do
+      K11, m11 := Completion(K,p11: Precision  := prec);
+      K11 := ChangePrecision(K11, prec);
+      PKv := PolynomialRing(K11);
+      curK11 := BaseChange(curK,m11);
 
-  deflkv := PKv![K11!m11(c): c in Coefficients(DefiningPolynomial(lk))];
-  locflds := <LocalField(K11, e[1]): e in Factorization(deflkv)>;
-  localg := quo<PKv| deflkv>; 
-  lktolocalg := hom<lk-> localg| t:-> elt<localg|[K11!m11(c): c in ElementToSequence(t)]>>;
-  localgtolocflds := <hom<localg-> loc| loc.1>: loc in locflds>;
-  try 
-  locimg, homs, selgps, relevantpts := complocImg(fctnsglob, PKv![m11(c): c in Coefficients(f)], lktolocalg, localgtolocflds);
-  flag := true;
-  catch e 
-  prec := prec + 50; 
-  continue;
-  end try;
-end while;
+      deflkv := PKv![K11!m11(c): c in Coefficients(DefiningPolynomial(lk))];
+      locflds := <LocalField(K11, e[1]): e in Factorization(deflkv)>;
+      localg := quo<PKv| deflkv>; 
+      lktolocalg := hom<lk-> localg| t:-> elt<localg|[K11!m11(c): c in ElementToSequence(t)]>>;
+      localgtolocflds := <hom<localg-> loc| loc.1>: loc in locflds>;
+      try 
+        locimg, homs, selgps, relevantpts := complocImg(fctnsglob, PKv![m11(c): c in Coefficients(f)], lktolocalg, localgtolocflds);
+        flag := true;
+      catch e 
+        prec := prec + 50; 
+        continue;
+      end try;
+      Append(~locdat, <locflds,localg, lktolocalg,localgtolocflds,locimg,homs,selgps>);
+    end while;
+  end for;
 
 
 unitgps_maps := [**];
@@ -248,17 +272,19 @@ unitgps := [**];  //unitgps[i] is a sequence of elements in F_i that satsify u^g
 pselmergp := [**]; //pselmergp[i] is a sequence of elements in F_i that are 11-Selmer
                    //elements
 for i in [1..#absflds] do
-  printf "Checking for 11-Selmer elements in F_%o\n", i;
+  printf "Checking for 11-Selmer elements in F_%o\n", i-1; // F_0 is just L.
   unitgp :=[];
   selgp := [];
   primes_11 :=[p[1]: p in Factorization(11*maxord[i])| p[2] eq 1];
-  if (primes_11 eq []) or exists{p: p in primes_11|InertiaDegree(p) ne 1} then
+  if (primes_11 eq []) or exists{p: p in primes_11|InertiaDegree(p) ne 1} then //gamma generates \Gal(F_i/K') and therefore the
+									       //relevant primes are the ones above p_1 or p_2 that 
+									       //totally split (by Proposition 2.3)
     S := {Parent(maxord[i]*1)|};  
     ugp_req, mgp := pSelmerGroup(11, S: Raw:=true);
-    print "S_i for computing R(F_i, S_i; 11) has size 0";
+    printf "S_%o for computing R(F_%o, S_%o; 11) has size 0\n", i-1,i-1,i-1;
   else
     ugp_req, mgp := pSelmerGroup(11, {p: p in primes_11}: Raw := true);
-    print "S_i for computing R(F_i, S_i; 11) has size", #primes_11;
+    printf "S_%o for computing R(F_%o, S_%o; 11) has size %o\n", i-1, i-1, i-1, #primes_11;
   end if;
   gens := [ugp_req.t: t in [1..Ngens(ugp_req)]];
   ugens := [absflds[i]!gen@@mgp : gen in gens];
@@ -267,24 +293,42 @@ for i in [1..#absflds] do
   assert Order(mat) eq 10;
   eigsp := Eigenspace(mat, gam);
   bas_es := [ElementToSequence(b): b in Basis(eigsp)];
-  printf "Dimension of the relavant eigenspace in R(F_%o, S_%o; 11) =%o\n", i, i, #bas_es;
+  printf "Dimension of the relavant eigenspace in R(F_%o, S_%o; 11) =%o\n", i-1, i-1, #bas_es;
   for b in bas_es do 
     u := (&+[(ZZ!b[t])*gens[t] : t in [1..#gens]])@@mgp;
     Append(~unitgp, u);
-    locunit := <localgtolocflds[t](lktolocalg(absfldstolk[i](u))): t in [1..#homs]>;
-    locunit := <selgps[t][2](homs[t](locunit[t])): t in [1..#homs]>;
-      if <locunit[t] in locimg[t]: t in [1..#locimg]> eq <true: t in [1..#locimg]> then
-        printf "%o is an eigenspace poly\n", x- ZZ!((GF(11)!gam)^(-2*i));
-        Append(~eigensp_poly, x- ZZ!((GF(11)!gam)^(-2*i)));
+    flag := true;
+    for j in [1..#locdat] do 
+      locflds := locdat[j][1]; localg := locdat[j][2]; lktolocalg := locdat[j][3]; localgtolocflds := locdat[j][4]; locimg := locdat[j][5]; 
+      homs:=locdat[j][6]; selgps:=locdat[j][7];
+      locunit := <localgtolocflds[t](lktolocalg(absfldstolk[i](u))): t in [1..#homs]>;
+      locunit := <selgps[t][2](homs[t](locunit[t])): t in [1..#homs]>;
+        if <locunit[t] in locimg[t]: t in [1..#locimg]> ne <true: t in [1..#locimg]> then
+	  flag := false;
+	  break;
+	end if;
+    end for;
+    if flag then  
+  	Append(~eigensp_poly, x- ZZ!((GF(11)!gam)^(-2*(i-1))));
         Append(~selgp, u);
-      end if; 
+    	if not full then  
+          printf "%o and %o are eigenspace polys\n", x- ZZ!((GF(11)!gam)^(-2*(i-1))),  x- ZZ!((GF(11)!gam)^(2*(i-1)));
+       	  Append(~eigensp_poly,  x- ZZ!((GF(11)!gam)^(2*(i-1))));
+	else
+       	  printf "%o is an eigenspace poly\n", x- ZZ!((GF(11)!gam)^(-2*(i-1)));
+	end if;
+    end if;
   end for;
   Append(~unitgps, unitgp);
   Append(~pselmergp, selgp);
   print ""; print ""; print "";
 end for;
 
-check_selmer := func<u,i| forall{t: t in [1..#homs]| (absfldstolk[i]*lktolocalg*localgtolocflds[t]*homs[t]*selgps[t][2])(u) in locimg[t]}>;
+check_selmer := func<u,i| 
+    forall{j : j in [1..#locdat] | forall{t: t in [1..#homs] where homs is locdat[j][6] | 
+	    (absfldstolk[i]*lktolocalg*localgtolocflds[t]*homs[t]*selgps[t][2])(u) in locimg[t] 
+		    where lktolocalg is locdat[j][3] where localgtolocflds is locdat[j][4] where locimg is locdat[j][5] 
+		    where homs is locdat[j][6] where selgps is locdat[j][7]}}>;
 
 
 return eigensp_poly, unitgps, pselmergp, check_selmer, gam;
