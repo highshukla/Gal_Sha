@@ -304,8 +304,10 @@ for i in [1..#absflds] do
   assert Order(mat) eq prime-1;
   eigsp := Eigenspace(mat, gam);
   bas_es := [ElementToSequence(b): b in Basis(eigsp)];
-  
-  printf "Dimension of the relavant eigenspace in R(F_%o, S_%o; %o) =%o\n", i-1, i-1, prime, #bas_es;
+ 
+//The relevant eigenspace is the ((L^x)/(L^x)^p)^(1) from Theorem 2.1 in the manuscript
+
+  printf "Dimension of the relevant eigenspace in R(F_%o, S_%o; %o) =%o\n", i-1, i-1, prime, #bas_es;
   
   for b in bas_es do 
     
