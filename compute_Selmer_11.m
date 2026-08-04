@@ -1,6 +1,6 @@
 /*
-The following program uses the main function to compute the Sel_11(E/K)/Sel_11(E/Q) for
-a number field K in which 11 is unramified as an ideal. There are two parameters, the
+The following program uses the main function to compute the Sel_p(E/K) for
+a number field K and a prime p. There are two parameters, the
 first one is precision parameter "prec" for precision in local computation that is 50 as default,
 and the second one is parameter for computing the full Selmer group or using section 3.1 and Algorithm 3
 and computing only the eigenspace polynomials. This parameter is called "full" and is set as default to "false", i.e., 
@@ -10,18 +10,20 @@ Selmer group.
 The main() automatically increases the precision if and when required. 
 The input to the main function is
 the Cremona ref or aInvariants or the defining polynomial, and a cyclic number 
-field K of degree 5. A call will look like main("7056bq4", K).  The output of the main
+field K of degree q. A call will look like main("7056bq4", K, 11: prec:= 60, full:= true).  
+Let q_half = q or (q-1)/2 depending on whether or not full is true or false, respectively.
+The output of the main
 function are
   1) a sequence of linear polynomials x-a_theta corresponding to the eigenspaces
      theta of Sel_11(E/K)/Sel_11(E/Q),
-  2) a list of sequences indexed by i in [1..4] of elements in F_i that correspond 
-     to u^gamma= u^phi(gamma) mod 11 powers,
-  3) a list of sequences indexed by i in [1..4] of elements in F_i that correspond 
-     to 11-selmer elements in F_i,
+  2) a list of sequences indexed by i in [0..q_half-1] of elements in F_i that correspond 
+     to u^gamma= u^phi(gamma) mod p powers,
+  3) a list of sequences indexed by i in [0..q_half-1] of elements in F_i that correspond 
+     to p-selmer elements in F_i,
   4) a user-function that takes input an element u in F_i and i and returns true if 
-     u corresponds to an 11-Selmer element and false otherwise, and 
+     u corresponds to an p-Selmer element and false otherwise, and 
   5) phi(gamma).
-The automorphism sigma that generates Gal(L/F) is chosen to be gamma^2.   
+The automorphism sigma that generates Gal(L/F) is chosen to be gamma^{(p-1)/q}.   
 */
 
 QQ := Rationals(); ZZ := Integers(); Qx<x> := PolynomialRing(QQ); 
@@ -46,9 +48,10 @@ data_31:= [
 ];
 
 
-main := function(data, K: prec := 50, full:= false)
+main := function(data, K, prime: prec := 50, full:= false)
 
 q := Degree(K);
+req_deg := ZZ!((prime-1)/q);
 cur := WeierstrassModel(EllipticCurve(data));
 
 printf "curve is given by the Cremona label %o and the field K is given by the defining polynomial %o \n", CremonaReference(cur), DefiningPolynomial(K) ;
@@ -63,9 +66,9 @@ PK:= PolynomialRing(K);
 
 //compute 11-division polynomial and factorize to obtain a relevant factor whose root 
 //is x-coordinate of the representative point P so that etale algebra L = Q(P).
-pol11 := DivisionPolynomial(cur,11);
-factpol11 := [f[1]: f in Factorization(pol11)];
-relevantpol := [t : t in factpol11| #Roots(x^2-cm,ext<QQ|t>) ne 0][1];
+pol_p := DivisionPolynomial(cur, prime);
+factpol_p := [f[1]: f in Factorization(pol_p)];
+relevantpol := [t : t in factpol_p| #Roots(x^2-cm,ext<QQ|t>) ne 0][1];
 f := Evaluate(-DefiningPolynomial(cur),[x,0,1]);
 
 
@@ -81,8 +84,8 @@ l := ext<l1|Polynomial([-Evaluate(f, l1.1),0,1])>;
 delete l1t;
 l := AbsoluteField(l); 
 
-l := ext<QQ|MinimalPolynomial(11*l.1)>;
-F := Subfields(l, 4)[1][1]; 
+l := ext<QQ|MinimalPolynomial(prime*l.1)>;
+F := Subfields(l, 2*req_deg)[1][1]; 
 cmfld := Subfields(F, 2)[1][1];
 ordcm := MaximalOrder(cmfld); bascm := Basis(ordcm); 
 OF := MaximalOrder(Order(bascm cat Basis(EquationOrder(F))));
@@ -111,7 +114,7 @@ ltolk := hom<l-> lk| lk.1>;
 x1 := Roots(relevantpol,l)[1][1];
 y1 := SquareRoot(Evaluate(f, x1));
 Pt := [x1,y1,1]; //This is the point P such that L = Q(P).
-fctnsglob := comp11torsfunc(BaseChange(cur, l)!Pt, 11);
+fctnsglob := comp11torsfunc(BaseChange(cur, l)!Pt, prime);
 P := PolynomialRing(lk, 2);
 Pl := Parent(fctnsglob[1][1]);
 fctnsglob := [*[P.1*ltolk(Coefficient(t, Pl.1, 1)) +
@@ -122,12 +125,12 @@ fctnsglob := [*[P.1*ltolk(Coefficient(t, Pl.1, 1)) +
 //computing sigma and tau such that <sigma>=Gal(L/F) and <tau>=Gal(K/Q).  
 cmfld := Subfields(l,2)[1][1];
 G1, p1, m1 := AutomorphismGroup(l, cmfld);
-g:= [e: e in G1| Order(e) eq 10][1];
+g:= [e: e in G1| Order(e) eq prime-1][1];
 lrelF := RelativeField(F,l);
 fk := ext<K|DefiningPolynomial(F)>;
 G2, p2, m2 := AutomorphismGroup(K);
 
-sigma := m1(g^2); tau1 := m2(G2.1); gamma := m1(g);
+sigma := m1(g^(req_deg)); tau1 := m2(G2.1); gamma := m1(g);
 tau := hom<fk -> fk | x :-> elt<fk|[tau1(c): c in ElementToSequence(x)]>>;
 
 print "choosing sigma = gamma^2";
@@ -140,11 +143,11 @@ assert Rank(Matrix(F, q,q, &cat[ElementToSequence(lrelF!((sigma^i)(a))): i in [0
 assert Rank(Matrix(F, q,q, &cat[ElementToSequence((tau1^i)(b)): i in [0..q-1]])) eq q;
 
 
-//checking how sigma acts on an 11-torsion point P
+//checking how sigma acts on an prime-torsion point P
 Ptsig := [sigma(x1),sigma(y1),1];
 Ptgam := [gamma(x1), gamma(y1),1];
 curl := BaseChange(cur, l);
-gam := [i: i in [1..10]| i*curl!Pt eq curl!Ptgam][1];
+gam := [i: i in [1..prime-1]| i*curl!Pt eq curl!Ptgam][1];
 printf "P^gamma = %oP and phi(gamma) = %o\n", gam, gam;
 
 
@@ -173,9 +176,9 @@ values := [[<(sigma^(v[1]))(a), (tau^(v[2]))(b)>: v in partitions[i+1]]: i in [0
 // first entry in the values will correspond to [<a,b>, <a,tau(b)>,...,<a,tau^(q-1)(b)>]
 
 
-//primitive elements generating a degree 20 subfield of lk
+//primitive elements generating a degree 2*(prime-1) subfield of lk
 values := [&+[ltolk(v[1])*lk!v[2]: v in values[i+1]]: i in [0..q_half]];
-assert forall{v : v in values | Degree(MinimalPolynomial(v,QQ)) eq 20};
+assert forall{v : v in values | Degree(MinimalPolynomial(v,QQ)) eq 2*(prime-1)};
 
 
 
@@ -213,7 +216,7 @@ print "class grp orders: ", [#gp[1]: gp in clgps];
 
 
 //local computation and local images
-  primes_above_11 := [p[1]: p in Factorization(11*MaximalOrder(K))];
+  primes_above_11 := [p[1]: p in Factorization(prime*MaximalOrder(K))];
   locdat := [**];
   for p11 in primes_above_11 do
     flag := false;
@@ -241,21 +244,22 @@ print "class grp orders: ", [#gp[1]: gp in clgps];
   end for;
 
 
+/*
 unitgps_maps := [**];
 for i in [1..#maxord] do 
 ugp, mgp, useq := SUnitGroup(maxord[i]*1: Raw := true);
   ugp := [g: g in Generators(ugp)| Order(g) eq 0];
   Append(~unitgps_maps, <ugp, mgp, useq, Rank(Codomain(mgp))>);
 end for;
- 
+*/ 
 
 idx_gam := [**];
 
 gamflds :=[**];
 for i in [1..#autgps_gam] do 
   gp := autgps_gam[i]; fldtolk := absfldstolk[i]; m1 := gp[2]; 
-  g1 := [t:t in gp[1]| Order(t) eq 10][1];
-  for j in [1..9] do 
+  g1 := [t:t in gp[1]| Order(t) eq prime-1][1];
+  for j in [1..prime-2] do 
     if fldtolk(m1((g1)^j)(Domain(fldtolk).1)) eq gamlk(values[i]) then Append(~gamflds, m1(g1^j)); break; 
     end if;
   end for;
@@ -268,60 +272,87 @@ end for;
 eigensp_poly:= []; //eigensp_poly is a sequence of minimal polynomials with respect to
                    //eigenspaces 
 unitgps := [**];  //unitgps[i] is a sequence of elements in F_i that satsify u^gamma=u^
-                  //phi(gamma) modulo 11 powers. 
-pselmergp := [**]; //pselmergp[i] is a sequence of elements in F_i that are 11-Selmer
+                  //phi(gamma) modulo prime powers. 
+pselmergp := [**]; //pselmergp[i] is a sequence of elements in F_i that are prime-Selmer
                    //elements
+
 for i in [1..#absflds] do
-  printf "Checking for 11-Selmer elements in F_%o\n", i-1; // F_0 is just L.
+
+  printf "Checking for %o-Selmer elements in F_%o\n", prime, i-1; // F_0 is just L.
   unitgp :=[];
   selgp := [];
-  primes_11 :=[p[1]: p in Factorization(11*maxord[i])| p[2] eq 1];
+  primes_11 :=[p[1]: p in Factorization(prime*maxord[i])| p[2] eq 1];
+  
   if (primes_11 eq []) or exists{p: p in primes_11|InertiaDegree(p) ne 1} then //gamma generates \Gal(F_i/K') and therefore the
 									       //relevant primes are the ones above p_1 or p_2 that 
 									       //totally split (by Proposition 2.3)
     S := {Parent(maxord[i]*1)|};  
-    ugp_req, mgp := pSelmerGroup(11, S: Raw:=true);
-    printf "S_%o for computing R(F_%o, S_%o; 11) has size 0\n", i-1,i-1,i-1;
+    ugp_req, mgp := pSelmerGroup(prime, S: Raw:=true);
+    printf "S_%o for computing R(F_%o, S_%o; %o) has size 0\n", i-1,i-1,i-1, prime;
+  
   else
-    ugp_req, mgp := pSelmerGroup(11, {p: p in primes_11}: Raw := true);
-    printf "S_%o for computing R(F_%o, S_%o; 11) has size %o\n", i-1, i-1, i-1, #primes_11;
+    ugp_req, mgp := pSelmerGroup(prime, {p: p in primes_11}: Raw := true);
+    printf "S_%o for computing R(F_%o, S_%o; %o) has size %o\n", i-1, i-1, i-1, prime, #primes_11;
+  
   end if;
+  
+
   gens := [ugp_req.t: t in [1..Ngens(ugp_req)]];
   ugens := [absflds[i]!gen@@mgp : gen in gens];
   gam_ugens := [ElementToSequence((mgp(gamflds[i](gen)))): gen in ugens];
-  mat := Matrix(GF(11),#gens, #gens, &cat(gam_ugens));
-  assert Order(mat) eq 10;
+  mat := Matrix(GF(prime),#gens, #gens, &cat(gam_ugens));
+  assert Order(mat) eq prime-1;
   eigsp := Eigenspace(mat, gam);
   bas_es := [ElementToSequence(b): b in Basis(eigsp)];
-  printf "Dimension of the relavant eigenspace in R(F_%o, S_%o; 11) =%o\n", i-1, i-1, #bas_es;
+  
+  printf "Dimension of the relavant eigenspace in R(F_%o, S_%o; %o) =%o\n", i-1, i-1, prime, #bas_es;
+  
   for b in bas_es do 
+    
     u := (&+[(ZZ!b[t])*gens[t] : t in [1..#gens]])@@mgp;
     Append(~unitgp, u);
     flag := true;
+    
     for j in [1..#locdat] do 
+      
       locflds := locdat[j][1]; localg := locdat[j][2]; lktolocalg := locdat[j][3]; localgtolocflds := locdat[j][4]; locimg := locdat[j][5]; 
       homs:=locdat[j][6]; selgps:=locdat[j][7];
       locunit := <localgtolocflds[t](lktolocalg(absfldstolk[i](u))): t in [1..#homs]>;
       locunit := <selgps[t][2](homs[t](locunit[t])): t in [1..#homs]>;
+        
         if <locunit[t] in locimg[t]: t in [1..#locimg]> ne <true: t in [1..#locimg]> then
+	  
 	  flag := false;
 	  break;
 	end if;
+    
     end for;
+    
     if flag then  
-  	Append(~eigensp_poly, x- ZZ!((GF(11)!gam)^(-2*(i-1))));
+  	
+        Append(~eigensp_poly, x- ZZ!((GF(prime)!gam)^(-2*(i-1))));
         Append(~selgp, u);
-    	if not full then  
-          printf "%o and %o are eigenspace polys\n", x- ZZ!((GF(11)!gam)^(-2*(i-1))),  x- ZZ!((GF(11)!gam)^(2*(i-1)));
+    	
+	if not full then  
+          
+	  printf "%o and %o are eigenspace polys\n", x- ZZ!((GF(prime)!gam)^(-2*(i-1))),  x- ZZ!((GF(prime)!gam)^(2*(i-1)));
        	  Append(~eigensp_poly,  x- ZZ!((GF(11)!gam)^(2*(i-1))));
+	
 	else
-       	  printf "%o is an eigenspace poly\n", x- ZZ!((GF(11)!gam)^(-2*(i-1)));
+       	  
+	  printf "%o is an eigenspace poly\n", x- ZZ!((GF(prime)!gam)^(-2*(i-1)));
+	
 	end if;
-    end if;
+    
+     end if;
+  
   end for;
+  
   Append(~unitgps, unitgp);
   Append(~pselmergp, selgp);
+  
   print ""; print ""; print "";
+
 end for;
 
 check_selmer := func<u,i| 
