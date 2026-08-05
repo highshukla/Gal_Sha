@@ -55,11 +55,13 @@ req_deg := ZZ!((prime-1)/q);
 cur := WeierstrassModel(EllipticCurve(data));
 
 printf "curve is given by the Cremona label %o and the field K is given by the defining polynomial %o \n", CremonaReference(cur), DefiningPolynomial(K) ;
+print "";
 
 bool, cm := HasComplexMultiplication(cur); 
 if not bool then error "This curve does not have complex multiplication"; end if;
 
 print "Curve has CM discriminant: ", cm;
+print "";
 //Base change cur to K.
 curK := BaseChange(cur,K);
 PK:= PolynomialRing(K);
@@ -99,6 +101,7 @@ F := OptimizedRepresentation(Subfields(l,4)[1][1]: Discriminant:=Discriminant(OF
 OF := MaximalOrder(F: Discriminant := Discriminant(OF)); 
 basOF := Basis(OF);
 print "computed L and F";
+print "";
 
 //lk is the field LK as an extension of K.
 lk := ext<K|DefiningPolynomial(l)>;
@@ -133,8 +136,9 @@ G2, p2, m2 := AutomorphismGroup(K);
 sigma := m1(g^(req_deg)); tau1 := m2(G2.1); gamma := m1(g);
 tau := hom<fk -> fk | x :-> elt<fk|[tau1(c): c in ElementToSequence(x)]>>;
 
-print "choosing sigma = gamma^2";
+printf "choosing sigma = gamma^%o", req_deg;
 print "gamma, sigma and tau computed as in the manuscript";
+print "";
 
 a := l.1+1; b := K.1;
 
@@ -149,7 +153,7 @@ Ptgam := [gamma(x1), gamma(y1),1];
 curl := BaseChange(cur, l);
 gam := [i: i in [1..prime-1]| i*curl!Pt eq curl!Ptgam][1];
 printf "P^gamma = %oP and phi(gamma) = %o\n", gam, gam;
-
+print "";
 
 
 
@@ -169,6 +173,7 @@ else
 end if;
 
 printf "The full parameter was %o, so computing for %o many auxilary fields F_i\n", full, q_half;
+print "";
 
 partitions := [[<(k*t) mod q, t> : t in [0..q-1]] : k in [0..q_half]];
 values := [[<(sigma^(v[1]))(a), (tau^(v[2]))(b)>: v in partitions[i+1]]: i in [0..q_half]];
@@ -209,10 +214,12 @@ someord := [*Order(basordF[i] cat basord[i]): i in [1..#absflds]*];
 maxord := [*MaximalOrder(ord): ord in someord*];
 print "maximal orders of F_is computed";
 print "maximal orders of F_is have Discriminants of bit size:", [Log(2,Discriminant(ord)): ord in maxord];
+print "";
+
 clgps := [<G,m> where G, m := ClassGroup(ord): ord in maxord];
 
 print "class grp orders: ", [#gp[1]: gp in clgps];
-
+print "";
 
 
 //local computation and local images
@@ -279,6 +286,8 @@ pselmergp := [**]; //pselmergp[i] is a sequence of elements in F_i that are prim
 for i in [1..#absflds] do
 
   printf "Checking for %o-Selmer elements in F_%o\n", prime, i-1; // F_0 is just L.
+  print "";
+
   unitgp :=[];
   selgp := [];
   primes_11 :=[p[1]: p in Factorization(prime*maxord[i])| p[2] eq 1];
@@ -289,11 +298,13 @@ for i in [1..#absflds] do
     S := {Parent(maxord[i]*1)|};  
     ugp_req, mgp := pSelmerGroup(prime, S: Raw:=true);
     printf "S_%o for computing R(F_%o, S_%o; %o) has size 0\n", i-1,i-1,i-1, prime;
-  
+    print "";
+
   else
     ugp_req, mgp := pSelmerGroup(prime, {p: p in primes_11}: Raw := true);
     printf "S_%o for computing R(F_%o, S_%o; %o) has size %o\n", i-1, i-1, i-1, prime, #primes_11;
-  
+    print "";
+
   end if;
   
 
@@ -308,7 +319,8 @@ for i in [1..#absflds] do
 //The relevant eigenspace is the ((L^x)/(L^x)^p)^(1) from Theorem 2.1 in the manuscript
 
   printf "Dimension of the relevant eigenspace in R(F_%o, S_%o; %o) =%o\n", i-1, i-1, prime, #bas_es;
-  
+  print "";
+
   for b in bas_es do 
     
     u := (&+[(ZZ!b[t])*gens[t] : t in [1..#gens]])@@mgp;
@@ -345,7 +357,8 @@ for i in [1..#absflds] do
 	  printf "%o is an eigenspace poly\n", x- ZZ!((GF(prime)!gam)^(-2*(i-1)));
 	
 	end if;
-    
+     print "";
+
      end if;
   
   end for;
